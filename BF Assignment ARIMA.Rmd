@@ -1,0 +1,77 @@
+---
+title: "ARIMA"
+author: "Adrian Chan"
+date: "2024-11-21"
+output: html_document
+---
+
+```{r}
+
+library(fpp)
+library(fpp2)
+library(forecast)
+library(readxl)
+
+Quarterly_Costco_Sales_2002_to_Present<-read_excel("C:/Users/Adrian/Documents/Business Forecasting/Quarterly Costco Sales 2002 to Present.xlsx")
+
+head(Quarterly_Costco_Sales_2002_to_Present)
+
+sales_ts<-ts(Quarterly_Costco_Sales_2002_to_Present$`Sales (in billions)`,start=c(2020,1),end=c(2024,3),frequency=4)
+
+plot(sales_ts)
+# plots the data from Q1 2020 to Q3 2024
+
+ndiffs(sales_ts)
+#tells us that there needs to be 1 difference performed to make he time series stationary
+
+nsdiffs((diff(sales_ts,4)))
+# tells us that there needs to be 1 seasonal difference performed to make the seasonal time series stationary
+
+tsdisplay(diff(diff(sales_ts,4)))
+# the top plot shows that the data has been differenced for seasonality (quarterly) and regularly and appears to be more stationary than the original sales_ts dataset without any visible trends or seasonality
+# the ACF plot shows the correlation between lags and that they are within the significance bounds, suggesting that the time series is nearly stationary
+#the PACF plot shows that the lags are also within the significance bounds, suggesting that the time series is stationary with no significant dependencies between the lags
+
+fit<-auto.arima(sales_ts,trace=T,stepwise=F)
+fit
+# this function gives that the best ARIMA model to use to forecast is (0,1,0)(0,1,0)[4]
+# this means that p=0,d=1,q=0,P=0,D=1,Q=0 and the 4 represents a quarterly time series dataset
+
+attributes(fit)
+
+forecast(fit,h=5,level=c(99.5))
+plot(forecast(fit,h=5,level=c(99.5)))
+# this plot forecasts the next 5 quarters at the 99.5% confidence interval using the ARIMA model suggested by fit
+
+plot(sales_ts)
+lines(fit$fitted,col='red')
+# this plot graphs the original data set along with the forecasted dataset using fit
+# according to the plot, the ARIMA model is pretty accurate to the original dataset
+
+Acf(fit$residuals)
+# this residual analysis indicates that all of the autocorrelation values are within the significance bounds and that there is no autocorrelation left in the residuals
+# this indicates that the residuals are mostly uncorrelated and that the model is a good fit 
+
+Box.test(residuals(fit),lag=12,type="Ljung")
+# this test utilizes 12 lags to test for autocorrelation in the fit dataset
+# the p-value of 0.06838 indicates that the residuals are likely uncorrelated with each other
+
+plot.ts(residuals(fit))
+# this plot shows that the residuals are fluctuating around 0 and that there are no obvious trends or patterns
+# the biggest discrepancies are shown to be around +-0.4
+
+hist(fit$residuals)
+# this histogram indicates that the residuals appear to be around 0 and that it is close to being a normal distribution
+
+tsdiag(fit)
+# in the top plot, it shows that most of the values lie within +-1, with no clear structure or pattern, meaning that the residuals appear to be random
+# the ACF of the residuals indicates that most of the bars shown fall within the confidence interval, meaning the residuals are uncorrelated
+# the Ljung-Box Test shows that the p-values are mostly above the 0.05 level, indicating that the residuals are uncorrelated
+
+accuracy(fit)
+# according to the accuracy code, the ARIMA model is a good forecasting model
+# using an MAPE of 0.9580384%, it indicates that on average, the model's predictions deviate by less than 1% of the actual values
+# using the MPE accuracy measure of 0.1580318%, it indicates that the model's forecasts have a very small error percentage
+
+```
+
